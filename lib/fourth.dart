@@ -1,31 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
-import 'seven.dart';  // Notifications page
-import 'searchres.dart';  // Import the Search Results page
-import 'fifth.dart';  // Import FifthPage
+import 'seven.dart'; // Notifications page
+import 'searchres.dart'; // Search Results page
+import 'fifth.dart'; // Profile page
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class FourthPage extends StatefulWidget {
   const FourthPage({super.key});
 
   @override
-  State<FourthPage> createState() => _FourthPageState();
+  _FourthPageState createState() => _FourthPageState();
 }
 
 class _FourthPageState extends State<FourthPage> {
   int _selectedIndex = 0;
-  TextEditingController searchController = TextEditingController();
-  final List<String> _categories = ['House Cleaning', 'Garage Labor', 'Electrician'];
-  List<String> _filteredCategories = [];
+  final Color primaryColor = const Color(0xFF89AC46);
+  final Color darkPrimaryColor = const Color(0xFF6E8D38);
+  final Color backgroundColor = const Color(0xFFF5F5F5);
+
+  final List<String> _categories = [
+    'House Cleaning',
+    'Garage Labor',
+    'Electrician',
+    'Gardening Services',
+    'Pest Control',
+    'Moving and Packing Services',
+    'Laundry and Ironing Services',
+    'House Painting Services',
+    'Car Repairs and Maintenance',
+    'Cooking Services',
+    'Home Renovation Services',
+  ];
 
   void _onItemTapped(int index) {
     setState(() {
-      _selectedIndex = index; // Update selected index for highlighting
+      _selectedIndex = index;
     });
 
-    // Navigate to respective pages
     switch (index) {
       case 0:
-        // Stay on the current screen (Home)
         break;
       case 1:
         Navigator.pushReplacement(
@@ -33,189 +47,337 @@ class _FourthPageState extends State<FourthPage> {
           MaterialPageRoute(builder: (context) => const SevenScreen()),
         );
         break;
-      case 2:  // Navigate to FifthPage (Profile)
+      case 2:
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const FifthScreen(user: {},)),
+          MaterialPageRoute(builder: (context) => const FifthScreen()),
         );
         break;
     }
   }
 
-  void _onSearchChanged(String query) {
-    setState(() {
-      _filteredCategories = _categories
-          .where((category) => category.toLowerCase().contains(query.toLowerCase()))
-          .toList();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    final List<String> sliderImages = [
-      'assets/sdimage1.png',
-      'assets/sdimage2.png',
-      'assets/sdimage3.png',
-    ];
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Home'),
-        backgroundColor: const Color(0xFF5D8736), // Olive Green
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/new.png'), // Your background image
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Search Bar
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: TextField(
-                  controller: searchController,
-                  onChanged: _onSearchChanged,
-                  decoration: InputDecoration(
-                    hintText: 'Search for services...',
-                    prefixIcon: const Icon(Icons.search, color: Color(0xFF5D8736)), // Olive Green
-                    filled: true,
-                    fillColor: const Color(0xFFA9C46C), // Light Olive
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30.0),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  style: const TextStyle(color: Colors.black),
-                ),
+      body: Stack(
+        children: [
+          // Background image - same as SevenScreen
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/new.png'),
+                fit: BoxFit.cover,
               ),
-
-              // Category Suggestions
-              if (searchController.text.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Column(
-                    children: _filteredCategories
-                        .map((category) => ListTile(
-                              title: Text(category),
-                              onTap: () {
-                                // Navigate to the Search Results page
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => SearchResScreen(query: category),
-                                  ),
-                                );
-                              },
-                            ))
-                        .toList(),
-                  ),
-                ),
-
-              // Image Slider
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: CarouselSlider.builder(
-                  itemCount: sliderImages.length,
-                  itemBuilder: (context, index, realIndex) {
-                    return Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        image: DecorationImage(
-                          image: AssetImage(sliderImages[index]),
+            ),
+          ),
+          // Content
+          Column(
+            children: [
+              AppBar(
+                backgroundColor: primaryColor.withOpacity(0.8),
+                elevation: 0,
+                automaticallyImplyLeading: false,
+                title: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: Colors.white,
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/icon2.png',
                           fit: BoxFit.cover,
+                          width: 40,
+                          height: 40,
                         ),
                       ),
-                    );
-                  },
-                  options: CarouselOptions(
-                    autoPlay: true,
-                    autoPlayInterval: const Duration(seconds: 3),
-                    autoPlayAnimationDuration: const Duration(milliseconds: 800),
-                    enlargeCenterPage: true,
-                    viewportFraction: 1.0,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'TASKNEST',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+                centerTitle: false,
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Search Bar
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 15),
+                        child: Autocomplete<String>(
+                          optionsBuilder: (TextEditingValue textEditingValue) {
+                            if (textEditingValue.text.isEmpty) {
+                              return const Iterable<String>.empty();
+                            }
+                            return _categories.where((category) =>
+                                category.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+                          },
+                          onSelected: (String selection) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => SearchResScreen(query: selection)),
+                            );
+                          },
+                          fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                            return TextField(
+                              controller: controller,
+                              focusNode: focusNode,
+                              decoration: InputDecoration(
+                                hintText: 'Search for services...',
+                                hintStyle: TextStyle(color: Colors.grey[600]),
+                                prefixIcon: Icon(Icons.search, color: primaryColor),
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(vertical: 15),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                  borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                  borderSide: BorderSide(color: primaryColor, width: 1.5),
+                                ),
+                              ),
+                              style: const TextStyle(color: Colors.black87),
+                            );
+                          },
+                          optionsViewBuilder: (context, onSelected, options) {
+                            return Align(
+                              alignment: Alignment.topLeft,
+                              child: Material(
+                                elevation: 4,
+                                borderRadius: BorderRadius.circular(15),
+                                child: Container(
+                                  width: MediaQuery.of(context).size.width - 40,
+                                  constraints: const BoxConstraints(maxHeight: 200),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                  child: ListView.builder(
+                                    padding: EdgeInsets.zero,
+                                    itemCount: options.length,
+                                    itemBuilder: (context, index) {
+                                      final option = options.elementAt(index);
+                                      return ListTile(
+                                        title: Text(
+                                          option,
+                                          style: GoogleFonts.poppins(),
+                                        ),
+                                        onTap: () => onSelected(option),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                      // Carousel Slider
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: CarouselSlider.builder(
+                          itemCount: 3,
+                          itemBuilder: (context, index, realIndex) {
+                            return Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 5),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(15),
+                                image: DecorationImage(
+                                  image: AssetImage('assets/sdimage${index + 1}.png'),
+                                  fit: BoxFit.cover,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 10,
+                                    spreadRadius: 2,
+                                    offset: const Offset(0, 5),
+                                  ),
+                                ],
+                              ),
+                            ).animate().fadeIn(duration: 500.ms).scale();
+                          },
+                          options: CarouselOptions(
+                            height: 180,
+                            autoPlay: true,
+                            autoPlayInterval: const Duration(seconds: 4),
+                            autoPlayAnimationDuration: const Duration(milliseconds: 800),
+                            enlargeCenterPage: true,
+                            viewportFraction: 0.9,
+                          ),
+                        ),
+                      ),
+
+                      // Categories Section Header
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(25, 25, 25, 15),
+                        child: Text(
+                          'Popular Services',
+                          style: GoogleFonts.poppins(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+
+                      // Categories Grid
+                      GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 15,
+                          mainAxisSpacing: 15,
+                          childAspectRatio: 1.2,
+                        ),
+                        itemCount: _categories.length,
+                        itemBuilder: (context, index) {
+                          return _ServiceCard(
+                            imagePath: 'assets/image${index + 1}.png',
+                            title: _categories[index],
+                            searchQuery: _categories[index],
+                          ).animate().slideX(
+                            begin: index.isEven ? -1 : 1,
+                            end: 0,
+                            duration: 400.ms,
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                   ),
                 ),
               ),
-
-              // Detail Cards with category names
-              const DetailCard(imagePath: 'assets/image1.png', cardTitle: 'House Cleaning', searchQuery: 'House Cleaning'),
-              const DetailCard(imagePath: 'assets/image2.png', cardTitle: 'Garage Labor', searchQuery: 'Garage Labor'),
-              const DetailCard(imagePath: 'assets/image3.png', cardTitle: 'Electrician', searchQuery: 'Electrician'),
+            ],
+          ),
+        ],
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+          child: BottomNavigationBar(
+            backgroundColor: primaryColor,
+            selectedItemColor: Colors.white,
+            unselectedItemColor: Colors.white.withOpacity(0.7),
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            elevation: 10,
+            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined),
+                activeIcon: Icon(Icons.home),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.notifications_outlined),
+                activeIcon: Icon(Icons.notifications),
+                label: 'Notifications',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person_outlined),
+                activeIcon: Icon(Icons.person),
+                label: 'Profile',
+              ),
             ],
           ),
         ),
-      ),
-
-      // Bottom Navigation Bar
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: const Color(0xFF5D8736), // Olive Green
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white60,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
-            label: 'Notifications',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
       ),
     );
   }
 }
 
-class DetailCard extends StatelessWidget {
+class _ServiceCard extends StatelessWidget {
   final String imagePath;
-  final String cardTitle;
-  final String searchQuery; // Pass the query for search navigation
+  final String title;
+  final String searchQuery;
 
-  const DetailCard({required this.imagePath, required this.cardTitle, required this.searchQuery, super.key});
+  const _ServiceCard({
+    required this.imagePath,
+    required this.title,
+    required this.searchQuery,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: GestureDetector(
-        onTap: () {
-          // Navigate to the search results page with the respective category
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => SearchResScreen(query: searchQuery),
-            ),
-          );
-        },
-        child: Container(
-          height: 100,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            image: DecorationImage(
-              image: AssetImage(imagePath),
-              fit: BoxFit.cover,
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => SearchResScreen(query: searchQuery)),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          image: DecorationImage(
+            image: AssetImage(imagePath),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.black.withOpacity(0.3),
+              BlendMode.darken,
             ),
           ),
-          alignment: Alignment.center,
-          child: Text(
-            cardTitle,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
             ),
-          ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              bottom: 15,
+              left: 15,
+              right: 15,
+              child: Text(
+                title,
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,12 +1,15 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'second.dart'; // Import second.dart (LoginPage)
-import 'third.dart'; // Import third.dart (ThirdPage or Registration page)
+import 'package:google_fonts/google_fonts.dart';
+import 'second.dart'; // LoginPage
+import 'third.dart'; // RegistrationPage
+import 'user_controller.dart'; // UserController with Provider
+import 'package:provider/provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase initialization for both mobile and web
+  // Firebase initialization
   try {
     await Firebase.initializeApp(
       options: const FirebaseOptions(
@@ -22,7 +25,12 @@ void main() async {
     print("Error initializing Firebase: $e");
   }
 
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => UserController(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -33,9 +41,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'TASKNEST',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF89AC46)),
         useMaterial3: true,
-        fontFamily: 'RobotoSlab', // Set default font to RobotoSlab
+        fontFamily: 'RobotoSlab',
       ),
       home: const WelcomePage(),
     );
@@ -47,16 +55,20 @@ class WelcomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const Color primaryColor = Color(0xFF89AC46);
+    const Color darkPrimaryColor = Color(0xFF6E8D38);
+    const Color backgroundColor = Color(0xFFF5F5F5);
+
     return Scaffold(
-      extendBodyBehindAppBar: true, // Extends the body behind the app bar
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.transparent, // Make app bar transparent
-        elevation: 0, // Remove app bar shadow
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: Container(
         decoration: const BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/new.png'), // Full background image
+            image: AssetImage('assets/new.png'),
             fit: BoxFit.cover,
           ),
         ),
@@ -66,42 +78,36 @@ class WelcomePage extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                // Logo with improved padding and shadow
                 Padding(
                   padding: const EdgeInsets.all(20.0),
                   child: Image.asset(
-                    'assets/logo.png', // Your logo in the assets folder
+                    'assets/logo.png',
                     height: 150,
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Title text with enhanced font styling
-                const Text(
+                Text(
                   'Your Trusted Service Provider',
-                  style: TextStyle(
-                    fontSize: 20, // Increased font size
-                    fontWeight: FontWeight.bold, // Bold text
+                  style: GoogleFonts.poppins(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                     color: Colors.white,
-                    fontFamily: 'RobotoSlab', // Use RobotoSlab font
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 40),
-
-                // Login button with improved style
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromARGB(182, 87, 172, 100),
+                    backgroundColor: primaryColor.withOpacity(0.9),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30.0), // Rounded corners
+                      borderRadius: BorderRadius.circular(30.0),
                     ),
                     padding: const EdgeInsets.symmetric(
-                      vertical: 18.0, // Increased vertical padding
-                      horizontal: 40.0, // Increased horizontal padding
+                      vertical: 18.0,
+                      horizontal: 40.0,
                     ),
-                    shadowColor: Colors.black, // Adding shadow
-                    elevation: 8.0, // Added elevation for 3D effect
+                    shadowColor: Colors.black,
+                    elevation: 8.0,
                   ),
                   onPressed: () {
                     Navigator.push(
@@ -109,14 +115,16 @@ class WelcomePage extends StatelessWidget {
                       MaterialPageRoute(builder: (context) => const LoginPage()),
                     );
                   },
-                  child: const Text(
+                  child: Text(
                     'Login',
-                    style: TextStyle(fontSize: 18, color: Colors.white),
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Create Account button with improved design
                 TextButton(
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white,
@@ -128,13 +136,12 @@ class WelcomePage extends StatelessWidget {
                       MaterialPageRoute(builder: (context) => const ThirdPage()),
                     );
                   },
-                  child: const Text(
+                  child: Text(
                     'Create an Account',
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
                       fontSize: 18,
-                      fontWeight: FontWeight.bold, // Bold text for emphasis
-                      color: Color.fromARGB(182, 106, 87, 212),
-                      fontFamily: 'RobotoSlab', // Use RobotoSlab font
+                      fontWeight: FontWeight.w600,
+                      color: const Color.fromARGB(255, 32, 26, 221),
                     ),
                   ),
                 ),

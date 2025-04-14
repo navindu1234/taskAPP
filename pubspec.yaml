@@ -22,15 +22,29 @@ dependencies:
   firebase_storage: 12.3.7
   carousel_slider: ^5.0.0
   firebase_auth: 5.3.4
-  shared_preferences: 2.5.2
   smooth_page_indicator: ^1.2.0+3
-  provider: ^6.0.3
-
+  provider: ^6.1.2
+  shared_preferences: ^2.5.2
+  image_picker: ^1.1.2
+  google_fonts: ^6.2.1
+  flutter_email_sender: ^7.0.0
+  cloud_functions: ^5.3.2
+  get: ^4.7.2
+  flutter_animate: ^4.5.2
+  flutter_rating_bar: ^4.0.1
+  intl: ^0.20.2
+  
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon2.png"
 
 # The following section is specific to Flutter packages.
 flutter:
@@ -47,9 +61,17 @@ flutter:
    - assets/image3.png
    - assets/image4.png
    - assets/image5.png
+   - assets/image6.png
+   - assets/image7.png
+   - assets/image8.png
+   - assets/image9.png
+   - assets/image10.png 
+   - assets/image11.png 
+   - assets/image12.png 
    - assets/sdimage1.png
    - assets/sdimage2.png
    - assets/sdimage3.png
+   - assets/logo.png
    
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

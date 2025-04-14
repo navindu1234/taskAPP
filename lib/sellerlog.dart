@@ -24,7 +24,6 @@ class _SellerLoginState extends State<SellerLogin> {
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
-        // If code is found, get the first document's data
         _sellerDetails = querySnapshot.docs.first.data();
         return true; // Valid code
       } else {
@@ -47,7 +46,7 @@ class _SellerLoginState extends State<SellerLogin> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => NineScreen(sellerDetails: _sellerDetails!), // Pass seller details to next screen
+          builder: (context) => SellerDetailsScreen(sellerDetails: _sellerDetails!),
         ),
       );
     } else {
@@ -68,48 +67,101 @@ class _SellerLoginState extends State<SellerLogin> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Seller Login'),
-        backgroundColor: Colors.green,
+        title: const Text('Seller Login', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.blue[900],
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Enter Your Unique Code:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _codeController,
-              decoration: InputDecoration(
-                border: const OutlineInputBorder(),
-                labelText: 'Unique Code',
-                errorText: _errorMessage,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.blue[900]!,
+              Colors.blue[800]!,
+              Colors.blue[700]!,
+            ],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Enter Your Unique Code',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
+              const SizedBox(height: 30),
+              TextField(
+                controller: _codeController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Unique Code',
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  hintText: 'Enter your seller code',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: BorderSide(color: Colors.blue[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: BorderSide(color: Colors.blue[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: const BorderSide(color: Colors.white),
+                  ),
+                  prefixIcon: const Icon(Icons.code, color: Colors.white70),
+                  errorText: _errorMessage,
+                  errorStyle: TextStyle(color: Colors.red[200]),
+                ),
+              ),
+              const SizedBox(height: 30),
+              ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.blue[900],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  elevation: 5,
+                  shadowColor: Colors.black.withOpacity(0.3),
                 ),
                 onPressed: _login,
-                child: const Text('Login'),
+                child: const Text(
+                  'LOGIN',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
+              const SizedBox(height: 20),
+              TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white70,
                 ),
                 onPressed: _createSellerAccount,
-                child: const Text('Create Seller Account'),
+                child: const Text(
+                  'Create Seller Account',
+                  style: TextStyle(
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

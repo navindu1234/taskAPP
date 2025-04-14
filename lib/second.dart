@@ -1,138 +1,216 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'fifth.dart'; // Import the FifthScreen file
+import 'fifth.dart';
+import 'user_controller.dart';
+import 'package:provider/provider.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final usernameController = TextEditingController();
-    final passwordController = TextEditingController();
+  State<LoginPage> createState() => _LoginPageState();
+}
 
-    Future<void> loginUser() async {
-      final username = usernameController.text;
-      final password = passwordController.text;
+class _LoginPageState extends State<LoginPage> {
+  final usernameController = TextEditingController();
+  final passwordController = TextEditingController();
+  bool _isLoading = false;
+  final Color primaryColor = const Color(0xFF89AC46);
+  final Color darkPrimaryColor = const Color(0xFF6E8D38);
+  final Color backgroundColor = const Color(0xFFF8F9F5);
 
-      try {
-        // Query Firestore for username and password
-        final querySnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .where('username', isEqualTo: username)
-            .where('password', isEqualTo: password)
-            .get();
+  Future<void> loginUser(BuildContext context) async {
+    final username = usernameController.text.trim();
+    final password = passwordController.text.trim();
 
-        if (querySnapshot.docs.isNotEmpty) {
-          // Get the first matched user data
-          final user = querySnapshot.docs.first.data();
+    if (username.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all fields')),
+      );
+      return;
+    }
 
-          // Navigate to FifthScreen with user data
+    setState(() => _isLoading = true);
+
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('username', isEqualTo: username)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final userData = querySnapshot.docs.first.data();
+        final userEmail = userData['email'];
+
+        final UserCredential userCredential =
+            await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: userEmail,
+          password: password,
+        );
+
+        if (userCredential.user != null) {
+          final userController = Provider.of<UserController>(context, listen: false);
+          userController.setUser(userData);
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => FifthScreen(user: user), // Pass user data
+              builder: (context) => const FifthScreen(),
             ),
           );
-        } else {
-          // Show error if no user found
-          ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Invalid username or password')));
         }
-      } catch (e) {
-        // Handle Firestore errors
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error logging in: $e')));
+          const SnackBar(content: Text('Invalid username or password')),
+        );
       }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'Error logging in';
+      if (e.code == 'user-not-found' || e.code == 'wrong-password') {
+        errorMessage = 'Invalid username or password';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
     }
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Login Page'),
-        backgroundColor: const Color(0xFF5D8736), // Updated AppBar color
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/new.png'), // Your background image
-            fit: BoxFit.cover,
+      body: Stack(
+        children: [
+          // Background image (same as FifthScreen)
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/new.png'),
+                fit: BoxFit.cover,
+              ),
+            ),
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Welcome Back!',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 24, // Slightly larger text size
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFA9C46C)), // Updated text color
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: usernameController,
-                decoration: InputDecoration(
-                  labelText: 'Username',
-                  labelStyle: const TextStyle(color: Color(0xFFA9C46C)), // Olive color for label
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.0), // Rounded border
-                  ),
-                  focusedBorder: const OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFFA9C46C)),
-                  ),
-                  prefixIcon: const Icon(Icons.person, color: Color(0xFFA9C46C)), // Olive color for icons
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: passwordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  labelStyle: const TextStyle(color: Color(0xFFA9C46C)), // Olive color for label
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.0), // Rounded border
-                  ),
-                  focusedBorder: const OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFFA9C46C)),
-                  ),
-                  prefixIcon: const Icon(Icons.lock, color: Color(0xFFA9C46C)), // Olive color for icons
-                ),
-              ),
-              const SizedBox(height: 30),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF5D8736), // Muted green color
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.0), // Rounded button
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  shadowColor: Colors.black, // Subtle shadow for better depth
-                  elevation: 5, // Elevation for modern look
-                ),
-                onPressed: loginUser,
-                child: const Text(
-                  'Login',
-                  style: TextStyle(fontSize: 18, color: Colors.white),
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextButton(
-                onPressed: () {
-                  // Navigate back or show forgot password
-                },
-                child: const Text(
-                  'Forgot Password?',
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 40),
+                Text(
+                  'Welcome Back!',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                      color: Color(0xFFA9C46C), fontWeight: FontWeight.w600),
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        blurRadius: 10,
+                        color: Colors.black.withOpacity(0.2),
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 40),
+                Card(
+                  elevation: 5,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  color: Colors.white.withOpacity(0.9),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      children: [
+                        TextField(
+                          controller: usernameController,
+                          decoration: InputDecoration(
+                            labelText: 'Username',
+                            labelStyle: TextStyle(color: primaryColor),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            prefixIcon: Icon(Icons.person, color: primaryColor),
+                            contentPadding: const EdgeInsets.symmetric(
+                                vertical: 15, horizontal: 20),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: passwordController,
+                          obscureText: true,
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            labelStyle: TextStyle(color: primaryColor),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            prefixIcon: Icon(Icons.lock, color: primaryColor),
+                            contentPadding: const EdgeInsets.symmetric(
+                                vertical: 15, horizontal: 20),
+                          ),
+                        ),
+                        const SizedBox(height: 30),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryColor,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              elevation: 4,
+                              shadowColor: darkPrimaryColor.withOpacity(0.5),
+                            ),
+                            onPressed: _isLoading ? null : () => loginUser(context),
+                            child: _isLoading
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white)
+                                : const Text(
+                                    'Login',
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 15),
+                        TextButton(
+                          onPressed: () {
+                            // Navigate to forgot password screen
+                          },
+                          child: Text(
+                            'Forgot Password?',
+                            style: TextStyle(
+                              color: primaryColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
