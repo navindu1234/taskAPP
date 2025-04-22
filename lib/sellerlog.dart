@@ -46,7 +46,7 @@ class _SellerLoginState extends State<SellerLogin> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => SellerDetailsScreen(sellerDetails: _sellerDetails!),
+          builder: (context) => NineScreen(sellerDetails: _sellerDetails!),
         ),
       );
     } else {

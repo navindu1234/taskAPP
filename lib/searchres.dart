@@ -1,10 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'order.dart';
-import 'user_controller.dart';
 
 class SearchResScreen extends StatefulWidget {
   final String query;
@@ -51,7 +49,7 @@ class _SearchResScreenState extends State<SearchResScreen> {
         // Calculate average rating and review count
         final reviewsSnapshot = await FirebaseFirestore.instance
             .collection('reviews')
-            .where('sellerId', isEqualTo: doc.id)
+            .where('sellerName', isEqualTo: data['name'])
             .get();
 
         double totalRating = 0;
@@ -290,17 +288,17 @@ class _SearchResScreenState extends State<SearchResScreen> {
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Icon(Icons.home, color: primaryColor, size: 16),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '${seller['address'] ?? 'Address not specified'}',
-                                            style: GoogleFonts.poppins(fontSize: 14.0),
-                                          ),
-                                        ],
-                                      ),
+                                      // const SizedBox(height: 4),
+                                      // Row(
+                                      //   children: [
+                                      //     Icon(Icons.home, color: primaryColor, size: 16),
+                                      //     const SizedBox(width: 4),
+                                      //     Text(
+                                      //       '${seller['address'] ?? 'Address not specified'}',
+                                      //       style: GoogleFonts.poppins(fontSize: 14.0),
+                                      //     ),
+                                      //   ],
+                                      // ),
                                     ],
                                   ),
                                 ),

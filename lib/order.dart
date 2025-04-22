@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
+import 'package:intl/intl.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'user_controller.dart';
 import 'my_orders_screen.dart';
 
@@ -19,7 +21,8 @@ class OrderScreen extends StatefulWidget {
 }
 
 class _OrderScreenState extends State<OrderScreen> {
-  final _quantityController = TextEditingController();
+  final _orderNameController = TextEditingController();
+  final _telephoneController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _placeController = TextEditingController();
   final _timeController = TextEditingController();
@@ -29,21 +32,66 @@ class _OrderScreenState extends State<OrderScreen> {
   bool _isSubmitting = false;
   bool _isReviewSubmitting = false;
   double _rating = 0.0;
+  final List<File> _orderImages = [];
   List<File> _reviewImages = [];
   final ImagePicker _picker = ImagePicker();
+  
+  // Date & Time variables
+  DateTime? _selectedDate;
+  TimeOfDay? _selectedTime;
   
   final Color primaryColor = const Color(0xFF89AC46);
   final Color darkPrimaryColor = const Color(0xFF6E8D38);
   final Color backgroundColor = const Color(0xFFF5F5F5);
 
   @override
+  void initState() {
+    super.initState();
+    _telephoneController.text = Provider.of<UserController>(context, listen: false).user['telephone'] ?? '';
+  }
+
+  @override
   void dispose() {
-    _quantityController.dispose();
+    _orderNameController.dispose();
+    _telephoneController.dispose();
     _descriptionController.dispose();
     _placeController.dispose();
     _timeController.dispose();
     _reviewController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickOrderImages() async {
+    try {
+      final List<XFile> pickedFiles = await _picker.pickMultiImage(
+        maxWidth: 1000,
+        maxHeight: 1000,
+        imageQuality: 85,
+      );
+      if (pickedFiles.isNotEmpty) {
+        if (_orderImages.length + pickedFiles.length > 5) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('You can upload up to 5 images'),
+              backgroundColor: Colors.red[400],
+            ),
+          );
+          return;
+        }
+        setState(() {
+          _orderImages.addAll(pickedFiles.map((file) => File(file.path)).toList());
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking images: ${e.toString()}'),
+          backgroundColor: Colors.red[400],
+        ),
+      );
+    }
   }
 
   Future<void> _pickReviewImages() async {
@@ -53,7 +101,7 @@ class _OrderScreenState extends State<OrderScreen> {
         maxHeight: 1000,
         imageQuality: 85,
       );
-      if (pickedFiles != null && pickedFiles.isNotEmpty) {
+      if (pickedFiles.isNotEmpty) {
         if (_reviewImages.length + pickedFiles.length > 5) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
@@ -79,10 +127,36 @@ class _OrderScreenState extends State<OrderScreen> {
     }
   }
 
+  void _removeOrderImage(int index) {
+    setState(() {
+      _orderImages.removeAt(index);
+    });
+  }
+
   void _removeReviewImage(int index) {
     setState(() {
       _reviewImages.removeAt(index);
     });
+  }
+
+  Future<List<String>> _uploadOrderImages() async {
+    List<String> imageUrls = [];
+    if (_orderImages.isEmpty) return imageUrls;
+
+    try {
+      for (var image in _orderImages) {
+        final String fileName = 'orders/${DateTime.now().millisecondsSinceEpoch}_${image.path.split('/').last}';
+        final Reference storageRef = FirebaseStorage.instance.ref().child(fileName);
+        final UploadTask uploadTask = storageRef.putFile(image);
+        final TaskSnapshot snapshot = await uploadTask;
+        final String downloadUrl = await snapshot.ref.getDownloadURL();
+        imageUrls.add(downloadUrl);
+      }
+    } catch (e) {
+      debugPrint('Error uploading images: $e');
+      throw Exception('Failed to upload images');
+    }
+    return imageUrls;
   }
 
   Future<List<String>> _uploadReviewImages() async {
@@ -116,20 +190,38 @@ class _OrderScreenState extends State<OrderScreen> {
       final userName = userController.user['username'] ?? 'Unknown User';
       final userPhone = userController.user['telephone'] ?? '';
 
+      // Upload order images first
+      final List<String> orderImageUrls = await _uploadOrderImages();
+
+      // Format date and time
+      String formattedDateTime = '';
+      if (_selectedDate != null && _selectedTime != null) {
+        final combinedDateTime = DateTime(
+          _selectedDate!.year,
+          _selectedDate!.month,
+          _selectedDate!.day,
+          _selectedTime!.hour,
+          _selectedTime!.minute,
+        );
+        formattedDateTime = DateFormat('MMM dd, yyyy - hh:mm a').format(combinedDateTime);
+      }
+
       final orderDoc = FirebaseFirestore.instance.collection('orders').doc();
       await orderDoc.set({
         'orderId': orderDoc.id,
+        'orderName': _orderNameController.text.trim(),
+        'telephone': _telephoneController.text.trim(),
         'sellerName': widget.seller['name'],
         'sellerService': widget.seller['service'],
-        'quantity': int.parse(_quantityController.text.trim()),
         'description': _descriptionController.text.trim(),
         'place': _placeController.text.trim(),
-        'time': _timeController.text.trim(),
+        'time': formattedDateTime,
         'status': 'pending',
         'timestamp': FieldValue.serverTimestamp(),
         'userId': userId,
         'username': userName,
         'userPhone': userPhone,
+        'images': orderImageUrls,
         'lastUpdated': FieldValue.serverTimestamp(),
         'notificationSeen': false,
       });
@@ -270,7 +362,7 @@ class _OrderScreenState extends State<OrderScreen> {
 
       await FirebaseFirestore.instance
           .collection('services')
-          .doc(widget.seller['uid'])
+          .doc(widget.seller[''])
           .update({
             'rating': averageRating,
             'reviewsCount': reviewCount,
@@ -278,6 +370,88 @@ class _OrderScreenState extends State<OrderScreen> {
     } catch (e) {
       debugPrint('Error updating seller rating: $e');
       throw Exception('Failed to update seller rating');
+    }
+  }
+
+  // Date and time selection methods
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(DateTime.now().year + 1),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: primaryColor,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: primaryColor,
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+        _updateTimeField();
+      });
+    }
+  }
+
+  Future<void> _selectTime(BuildContext context) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime ?? TimeOfDay.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: primaryColor,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: primaryColor,
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    
+    if (picked != null && picked != _selectedTime) {
+      setState(() {
+        _selectedTime = picked;
+        _updateTimeField();
+      });
+    }
+  }
+
+  void _updateTimeField() {
+    if (_selectedDate != null && _selectedTime != null) {
+      final combinedDateTime = DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _selectedTime!.hour,
+        _selectedTime!.minute,
+      );
+      _timeController.text = DateFormat('MMM dd, yyyy - hh:mm a').format(combinedDateTime);
+    } else if (_selectedDate != null) {
+      _timeController.text = DateFormat('MMM dd, yyyy').format(_selectedDate!);
+    } else if (_selectedTime != null) {
+      _timeController.text = _selectedTime!.format(context);
     }
   }
 
@@ -451,16 +625,20 @@ class _OrderScreenState extends State<OrderScreen> {
                                 ),
                                 const SizedBox(height: 20),
                                 _buildFormField(
-                                  controller: _quantityController,
-                                  label: 'Quantity',
-                                  icon: Icons.format_list_numbered,
-                                  keyboardType: TextInputType.number,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) return 'Please enter quantity';
-                                    final quantity = int.tryParse(value);
-                                    if (quantity == null || quantity <= 0) return 'Enter valid quantity';
-                                    return null;
-                                  },
+                                  controller: _orderNameController,
+                                  label: 'Order Name',
+                                  icon: Icons.shopping_bag,
+                                  validator: (value) => 
+                                    value == null || value.isEmpty ? 'Please enter order name' : null,
+                                ),
+                                const SizedBox(height: 15),
+                                _buildFormField(
+                                  controller: _telephoneController,
+                                  label: 'Telephone Number',
+                                  icon: Icons.phone,
+                                  keyboardType: TextInputType.phone,
+                                  validator: (value) => 
+                                    value == null || value.isEmpty ? 'Please enter telephone number' : null,
                                 ),
                                 const SizedBox(height: 15),
                                 _buildFormField(
@@ -472,20 +650,178 @@ class _OrderScreenState extends State<OrderScreen> {
                                     value == null || value.isEmpty ? 'Please enter description' : null,
                                 ),
                                 const SizedBox(height: 15),
+                                
+                                // Address Field
                                 _buildFormField(
                                   controller: _placeController,
-                                  label: 'Place',
-                                  icon: Icons.place,
+                                  label: 'Address',
+                                  icon: Icons.location_on,
                                   validator: (value) => 
-                                    value == null || value.isEmpty ? 'Please enter place' : null,
+                                    value == null || value.isEmpty ? 'Please enter address' : null,
                                 ),
                                 const SizedBox(height: 15),
-                                _buildFormField(
-                                  controller: _timeController,
-                                  label: 'Time',
-                                  icon: Icons.access_time,
-                                  validator: (value) => 
-                                    value == null || value.isEmpty ? 'Please enter time' : null,
+                                
+                                // Date & Time Selection
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Date & Time',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: TextFormField(
+                                            controller: _timeController,
+                                            readOnly: true,
+                                            decoration: InputDecoration(
+                                              hintText: 'Select date and time',
+                                              border: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                                borderSide: BorderSide(color: Colors.grey.shade300),
+                                              ),
+                                              enabledBorder: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                                borderSide: BorderSide(color: Colors.grey.shade300),
+                                              ),
+                                              filled: true,
+                                              fillColor: Colors.white,
+                                              prefixIcon: const Icon(Icons.calendar_today),
+                                            ),
+                                            validator: (value) => 
+                                              value == null || value.isEmpty ? 'Please select date and time' : null,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        IconButton(
+                                          icon: const Icon(Icons.calendar_month),
+                                          onPressed: () => _selectDate(context),
+                                          style: IconButton.styleFrom(
+                                            backgroundColor: primaryColor,
+                                            foregroundColor: Colors.white,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        IconButton(
+                                          icon: const Icon(Icons.access_time),
+                                          onPressed: () => _selectTime(context),
+                                          style: IconButton.styleFrom(
+                                            backgroundColor: primaryColor,
+                                            foregroundColor: Colors.white,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 15),
+                                
+                                // Order images upload section
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Add Order Photos (Optional - Max 5)',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    if (_orderImages.isNotEmpty)
+                                      SizedBox(
+                                        height: 100,
+                                        child: ListView.builder(
+                                          scrollDirection: Axis.horizontal,
+                                          itemCount: _orderImages.length,
+                                          itemBuilder: (context, index) {
+                                            return Padding(
+                                              padding: const EdgeInsets.only(right: 8.0),
+                                              child: Stack(
+                                                children: [
+                                                  ClipRRect(
+                                                    borderRadius: BorderRadius.circular(8),
+                                                    child: Image.file(
+                                                      _orderImages[index],
+                                                      width: 100,
+                                                      height: 100,
+                                                      fit: BoxFit.cover,
+                                                    ),
+                                                  ),
+                                                  Positioned(
+                                                    top: 0,
+                                                    right: 0,
+                                                    child: GestureDetector(
+                                                      onTap: () => _removeOrderImage(index),
+                                                      child: Container(
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.black.withOpacity(0.5),
+                                                          shape: BoxShape.circle,
+                                                        ),
+                                                        child: const Icon(
+                                                          Icons.close,
+                                                          color: Colors.white,
+                                                          size: 20,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    const SizedBox(height: 8),
+                                    ElevatedButton(
+                                      onPressed: _orderImages.length >= 5 
+                                          ? null 
+                                          : _pickOrderImages,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: _orderImages.length >= 5 
+                                            ? Colors.grey[300] 
+                                            : Colors.grey[200],
+                                        foregroundColor: Colors.grey[800],
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        elevation: 0,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.add_a_photo, 
+                                            size: 18,
+                                            color: _orderImages.length >= 5 
+                                                ? Colors.grey[500] 
+                                                : Colors.grey[800],
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Add Photos (${_orderImages.length}/5)',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 14,
+                                              color: _orderImages.length >= 5 
+                                                  ? Colors.grey[500] 
+                                                  : Colors.grey[800],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 25),
                                 SizedBox(
@@ -731,7 +1067,7 @@ class _OrderScreenState extends State<OrderScreen> {
                               ),
                               const SizedBox(height: 10),
                               Text(
-                                'For ${widget.seller['service']} by ${widget.seller['name']}',
+                                'For ${widget.seller['name']}',
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   color: Colors.grey[600],
@@ -778,42 +1114,42 @@ class _OrderScreenState extends State<OrderScreen> {
       ),
     );
   }
-Widget _buildReviewsList() {
-  return StreamBuilder<QuerySnapshot>(
-    stream: FirebaseFirestore.instance
-        .collection('reviews')
-        .where('sellerName', isEqualTo: widget.seller['']) // Fixed query to use seller's name
-        .orderBy('timestamp', descending: true)
-        .limit(5)
-        .snapshots(),
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return Center(
-          child: CircularProgressIndicator(color: primaryColor),
+
+  Widget _buildReviewsList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('reviews')
+          .where('sellerName', isEqualTo: widget.seller[''])
+          .orderBy('timestamp', descending: true)
+          .limit(5)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(color: primaryColor),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return _buildErrorWidget('Error loading reviews: ${snapshot.error}');
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return _buildEmptyStateWidget('No reviews yet. Be the first to review!');
+        }
+
+        return ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: snapshot.data!.docs.length,
+          separatorBuilder: (context, index) => const Divider(height: 30),
+          itemBuilder: (context, index) {
+            final review = snapshot.data!.docs[index];
+            return _buildReviewCard(review);
+          },
         );
-      }
-
-      if (snapshot.hasError) {
-        return _buildErrorWidget('Failed to load reviews. Please try again later.');
-      }
-
-      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-        return _buildEmptyStateWidget('No reviews yet. Be the first to review!');
-      }
-
-      return ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: snapshot.data!.docs.length,
-        separatorBuilder: (context, index) => const Divider(height: 30),
-        itemBuilder: (context, index) {
-          final review = snapshot.data!.docs[index];
-          return _buildReviewCard(review);
-        },
-      );
-    },
-  );
-}
+      },
+    );
+  }
 
   Widget _buildErrorWidget(String message) {
     return Container(
@@ -866,11 +1202,13 @@ Widget _buildReviewsList() {
     required String? Function(String?) validator,
     int maxLines = 1,
     TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
+      readOnly: readOnly,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: GoogleFonts.poppins(color: Colors.grey[600]),
