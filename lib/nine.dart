@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class SellerDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> sellerDetails;
@@ -12,13 +13,44 @@ class SellerDetailsScreen extends StatefulWidget {
 
 class _SellerDetailsScreenState extends State<SellerDetailsScreen> {
   String _orderStatus = 'pending'; // Default status
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   Future<void> _updateOrderStatus(String orderId, String status) async {
     try {
       await FirebaseFirestore.instance
           .collection('orders')
           .doc(orderId)
-          .update({'status': status});
+          .update({
+            'status': status,
+            'lastUpdated': FieldValue.serverTimestamp(),
+            'notificationSeen': false,
+          });
+
+      // Create a notification for the buyer
+      final orderDoc = await FirebaseFirestore.instance
+          .collection('orders')
+          .doc(orderId)
+          .get();
+      final orderData = orderDoc.data() as Map<String, dynamic>;
+
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'recipientId': orderData['userId'],
+        'senderId': widget.sellerDetails['uid'],
+        'type': 'order_update',
+        'orderId': orderId,
+        'message': 'Your order status has been updated to $status',
+        'timestamp': FieldValue.serverTimestamp(),
+        'read': false,
+      });
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Order status updated to $status'),
@@ -30,9 +62,10 @@ class _SellerDetailsScreenState extends State<SellerDetailsScreen> {
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error updating order: $e'),
+          content: Text('Error updating order: ${e.toString()}'),
           backgroundColor: Colors.red[800],
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -47,11 +80,16 @@ class _SellerDetailsScreenState extends State<SellerDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Seller Details',
-            style: TextStyle(color: Colors.white)),
+        title: const Text('Seller Dashboard', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.blue[900],
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => setState(() {}),
+          ),
+        ],
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -65,52 +103,31 @@ class _SellerDetailsScreenState extends State<SellerDetailsScreen> {
             ],
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Seller Profile',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSellerInfoCard(),
+                  const SizedBox(height: 16),
+                  _buildSearchField(),
+                  const SizedBox(height: 16),
+                  _buildOrderStatusToggle(),
+                ],
               ),
-              const SizedBox(height: 16),
-              _buildSellerDetailsCard(),
-              const SizedBox(height: 24),
-              const Text(
-                'Order Status',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 12),
-              _buildOrderStatusToggle(),
-              const SizedBox(height: 16),
-              Text(
-                '$_orderStatus Orders'.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withOpacity(0.9),
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Expanded(child: _buildOrdersList()),
-            ],
-          ),
+            ),
+            Expanded(
+              child: _buildOrdersList(),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildSellerDetailsCard() {
+  Widget _buildSellerInfoCard() {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -144,16 +161,14 @@ class _SellerDetailsScreenState extends State<SellerDetailsScreen> {
                 ),
               ),
               const Divider(color: Colors.white54, height: 20),
-              _buildInfoRow(Icons.person_outline, 'Full Name',
-                  widget.sellerDetails['name'] ?? 'Unknown'),
-              _buildInfoRow(Icons.location_on, 'Address',
-                  widget.sellerDetails['address'] ?? 'No address'),
-              _buildInfoRow(Icons.phone, 'Primary Telephone',
-                  widget.sellerDetails['telephone'] ?? 'No telephone'),
-              _buildInfoRow(Icons.phone_android, 'Secondary Telephone',
-                  widget.sellerDetails['secondaryTelephone'] ?? 'Not provided'),
-              _buildInfoRow(Icons.description, 'Service Description',
-                  widget.sellerDetails['serviceDescription'] ?? 'No description'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildStatItem(Icons.pending_actions, 'Pending', _orderStatus == 'pending'),
+                  _buildStatItem(Icons.check_circle, 'Accepted', _orderStatus == 'accepted'),
+                  _buildStatItem(Icons.cancel, 'Rejected', _orderStatus == 'rejected'),
+                ],
+              ),
             ],
           ),
         ),
@@ -161,37 +176,48 @@ class _SellerDetailsScreenState extends State<SellerDetailsScreen> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: Colors.white.withOpacity(0.8), size: 20),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+  Widget _buildStatItem(IconData icon, String label, bool isSelected) {
+    return Column(
+      children: [
+        Icon(icon, color: isSelected ? Colors.white : Colors.white.withOpacity(0.6)),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.white.withOpacity(0.6),
+            fontSize: 12,
           ),
-        ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchField() {
+    return TextField(
+      controller: _searchController,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.2),
+        hintText: 'Search orders...',
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+        prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.7)),
+        suffixIcon: _searchQuery.isNotEmpty
+            ? IconButton(
+                icon: Icon(Icons.clear, color: Colors.white.withOpacity(0.7)),
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() => _searchQuery = '');
+                },
+              )
+            : null,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(30),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
       ),
+      style: const TextStyle(color: Colors.white),
+      onChanged: (value) => setState(() => _searchQuery = value.toLowerCase()),
     );
   }
 
@@ -268,8 +294,9 @@ class _SellerDetailsScreenState extends State<SellerDetailsScreen> {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('orders')
-          .where('sellerName', isEqualTo: widget.sellerDetails['name'])
+          .where('sellerId', isEqualTo: widget.sellerDetails['uid'])
           .where('status', isEqualTo: _orderStatus)
+          .orderBy('timestamp', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -280,10 +307,10 @@ class _SellerDetailsScreenState extends State<SellerDetailsScreen> {
           );
         }
         if (snapshot.hasError) {
-          return const Center(
+          return Center(
             child: Text(
               "Error loading orders",
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white.withOpacity(0.8)),
             ),
           );
         }
@@ -297,73 +324,299 @@ class _SellerDetailsScreenState extends State<SellerDetailsScreen> {
         }
 
         var orders = snapshot.data!.docs;
-        return ListView.separated(
-          itemCount: orders.length,
-          separatorBuilder: (context, index) => Divider(
-            color: Colors.white.withOpacity(0.1),
-            height: 1,
-          ),
+        
+        // Filter orders based on search query
+        final filteredOrders = _searchQuery.isEmpty
+            ? orders
+            : orders.where((doc) {
+                final order = doc.data() as Map<String, dynamic>;
+                final orderId = order['orderId']?.toString().toLowerCase() ?? '';
+                final username = order['username']?.toString().toLowerCase() ?? '';
+                final description = order['description']?.toString().toLowerCase() ?? '';
+                return orderId.contains(_searchQuery) ||
+                    username.contains(_searchQuery) ||
+                    description.contains(_searchQuery);
+              }).toList();
+
+        if (filteredOrders.isEmpty) {
+          return Center(
+            child: Text(
+              "No orders match your search",
+              style: TextStyle(color: Colors.white.withOpacity(0.7)),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.only(bottom: 16),
+          itemCount: filteredOrders.length,
           itemBuilder: (context, index) {
-            var order = orders[index].data() as Map<String, dynamic>;
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.blue[700]!.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 8),
-                leading: CircleAvatar(
-                  backgroundColor: Colors.blue[900],
-                  child: Text(
-                    "${index + 1}",
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-                title: Text(
-                  "Order #${order['orderId']?.toString().substring(0, 6) ?? 'N/A'}",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                subtitle: Text(
-                  "${order['sellerServiceDescription'] ?? 'Service'}",
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                  ),
-                ),
-                trailing: _orderStatus == 'pending'
-                    ? Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.check_circle,
-                                color: Colors.green[300]),
-                            onPressed: () =>
-                                _updateOrderStatus(orders[index].id, 'accepted'),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.cancel, color: Colors.red[300]),
-                            onPressed: () =>
-                                _updateOrderStatus(orders[index].id, 'rejected'),
-                          ),
-                        ],
-                      )
-                    : Icon(
-                        _orderStatus == 'accepted'
-                            ? Icons.check_circle
-                            : Icons.cancel,
-                        color: _orderStatus == 'accepted'
-                            ? Colors.green[300]
-                            : Colors.red[300],
-                      ),
-              ),
-            );
+            var orderDoc = filteredOrders[index];
+            var order = orderDoc.data() as Map<String, dynamic>;
+            return _buildOrderCard(order, orderDoc.id);
           },
         );
       },
     );
   }
-}
+
+  Widget _buildOrderCard(Map<String, dynamic> order, String orderId) {
+    final timestamp = order['timestamp'] as Timestamp?;
+    final dateTime = timestamp?.toDate();
+    final formattedDate = dateTime != null 
+        ? DateFormat('MMM dd, yyyy - hh:mm a').format(dateTime)
+        : 'Date not available';
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _showOrderDetails(order, orderId),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Order #${order['orderId']?.toString().substring(0, 8) ?? 'N/A'}",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(order['status']),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      order['status']?.toString().toUpperCase() ?? 'UNKNOWN',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                formattedDate,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                order['description'] ?? 'No description',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.person, size: 16, color: Colors.blue),
+                  const SizedBox(width: 4),
+                  Text(
+                    order['username'] ?? 'Unknown user',
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                  const Spacer(),
+                  const Icon(Icons.phone, size: 16, color: Colors.green),
+                  const SizedBox(width: 4),
+                  Text(
+                    order['userPhone'] ?? 'No phone',
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (_orderStatus == 'pending')
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.green[50],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: () => _updateOrderStatus(orderId, 'accepted'),
+                      child: const Text('Accept', style: TextStyle(color: Colors.green)),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.red[50],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: () => _updateOrderStatus(orderId, 'rejected'),
+                      child: const Text('Reject', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _getStatusColor(String? status) {
+    switch (status) {
+      case 'accepted':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      case 'pending':
+      default:
+        return Colors.orange;
+    }
+  }
+
+  void _showOrderDetails(Map<String, dynamic> order, String orderId) {
+    final timestamp = order['timestamp'] as Timestamp?;
+    final dateTime = timestamp?.toDate();
+    final formattedDate = dateTime != null 
+        ? DateFormat('MMM dd, yyyy - hh:mm a').format(dateTime)
+        : 'Date not available';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 10,
+              spreadRadius: 5,
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            AppBar(
+              title: Text('Order Details #${order['orderId']?.toString().substring(0, 8) ?? ''}'),
+              centerTitle: true,
+              automaticallyImplyLeading: false,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDetailItem('Status', order['status']?.toString().toUpperCase() ?? 'UNKNOWN',
+                        _getStatusColor(order['status'])),
+                    _buildDetailItem('Order Date', formattedDate),
+                    _buildDetailItem('Customer', order['username'] ?? 'Unknown'),
+                    _buildDetailItem('Customer Phone', order['userPhone'] ?? 'Not provided'),
+                    const Divider(height: 24),
+                    _buildDetailItem('Service', widget.sellerDetails['serviceDescription'] ?? 'No service description'),
+                    _buildDetailItem('Quantity', order['quantity']?.toString() ?? 'Not specified'),
+                    _buildDetailItem('Description', order['description'] ?? 'No description'),
+                    _buildDetailItem('Place', order['place'] ?? 'Not specified'),
+                    _buildDetailItem('Time', order['time'] ?? 'Not specified'),
+                    const SizedBox(height: 24),
+                    if (_orderStatus == 'pending')
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: () {
+                                _updateOrderStatus(orderId, 'accepted');
+                                Navigator.pop(context);
+                              },
+                              child: const Text('Accept Order'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: () {
+                                _updateOrderStatus(orderId, 'rejected');
+                                Navigator.pop(context);
+                              },
+                              child: const Text('Reject Order'),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailItem(String label, String value, [Color? valueColor]) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: valueColor ?? Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+} 
