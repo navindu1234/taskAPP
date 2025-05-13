@@ -153,7 +153,7 @@ class _NineScreenState extends State<NineScreen> {
                       : null,
                 ),
                 child: widget.sellerDetails['profileImage'] == null
-                    ? Icon(Icons.person, size: 60, color: Colors.white)
+                    ? const Icon(Icons.person, size: 60, color: Colors.white)
                     : null,
               ),
               if (widget.sellerDetails['hasCertifications'] == true)
@@ -189,7 +189,7 @@ class _NineScreenState extends State<NineScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.star, color: Colors.amber, size: 20),
+              const Icon(Icons.star, color: Colors.amber, size: 20),
               const SizedBox(width: 4),
               Text(
                 (widget.sellerDetails['rating'] ?? 0.0).toStringAsFixed(1),
@@ -377,7 +377,7 @@ class _NineScreenState extends State<NineScreen> {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator(color: Colors.white));
+          return const Center(child: CircularProgressIndicator(color: Colors.white));
         }
 
         if (snapshot.hasError) {

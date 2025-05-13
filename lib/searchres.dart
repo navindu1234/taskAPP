@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'order.dart';
@@ -34,16 +33,13 @@ class _SearchResScreenState extends State<SearchResScreen> {
         final data = doc.data();
         data['uid'] = doc.id; // Ensure seller ID is included
 
-        // Get cover photo URL
-        if (data.containsKey('coverPhoto') && data['coverPhoto'] is String) {
-          try {
-            String imageUrl = await FirebaseStorage.instance
-                .ref(data['coverPhoto'])
-                .getDownloadURL();
-            data['coverPhoto'] = imageUrl;
-          } catch (e) {
-            data['coverPhoto'] = 'https://via.placeholder.com/400';
-          }
+        // Use coverImage directly if it exists
+        if (data.containsKey('coverImage') && data['coverImage'] is String) {
+          // If coverImage is already a URL, use it directly
+          data['coverImage'] = data['coverImage'];
+        } else {
+          // Fallback to placeholder if no cover image
+          data['coverImage'] = 'https://via.placeholder.com/400';
         }
 
         // Calculate average rating and review count
@@ -190,7 +186,7 @@ class _SearchResScreenState extends State<SearchResScreen> {
                                   borderRadius: const BorderRadius.vertical(
                                       top: Radius.circular(15.0)),
                                   child: Image.network(
-                                    seller['coverPhoto'] ?? 'https://via.placeholder.com/400',
+                                    seller['coverImage'] ?? 'https://via.placeholder.com/400',
                                     width: double.infinity,
                                     height: 180,
                                     fit: BoxFit.cover,
@@ -288,17 +284,6 @@ class _SearchResScreenState extends State<SearchResScreen> {
                                           ),
                                         ],
                                       ),
-                                      // const SizedBox(height: 4),
-                                      // Row(
-                                      //   children: [
-                                      //     Icon(Icons.home, color: primaryColor, size: 16),
-                                      //     const SizedBox(width: 4),
-                                      //     Text(
-                                      //       '${seller['address'] ?? 'Address not specified'}',
-                                      //       style: GoogleFonts.poppins(fontSize: 14.0),
-                                      //     ),
-                                      //   ],
-                                      // ),
                                     ],
                                   ),
                                 ),

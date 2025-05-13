@@ -7,7 +7,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import 'package:intl/intl.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'user_controller.dart';
 import 'my_orders_screen.dart';
 
@@ -1119,7 +1118,7 @@ class _OrderScreenState extends State<OrderScreen> {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('reviews')
-          .where('sellerName', isEqualTo: widget.seller[''])
+          .where('sellerName', isEqualTo:  widget.seller['sellerName'])
           .orderBy('timestamp', descending: true)
           .limit(5)
           .snapshots(),
