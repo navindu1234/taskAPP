@@ -371,8 +371,8 @@ class _NineScreenState extends State<NineScreen> {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('orders')
-          .where('sellerId', isEqualTo: widget.sellerDetails['uid'])
-          .where('status', isEqualTo: _orderStatus)
+          .where('sellerName', isEqualTo: widget.sellerDetails['name'])
+          // .where('status', isEqualTo: _orderStatus)
           //.orderBy('timestamp', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
@@ -520,16 +520,16 @@ class _NineScreenState extends State<NineScreen> {
             
             // Customer Phone
             GestureDetector(
-              onTap: order['userPhone'] != null ? () => _makePhoneCall(order['userPhone']) : null,
+              onTap: order['telephone'] != null ? () => _makePhoneCall(order['telephone']) : null,
               child: Row(
                 children: [
                   Icon(Icons.phone, size: 16, color: _primaryColor),
                   const SizedBox(width: 4),
                   Text(
-                    'Phone: ${order['userPhone'] ?? 'Not provided'}',
+                    'Phone: ${order['telephone'] ?? 'Not provided'}',
                     style: GoogleFonts.poppins(
-                      color: order['userPhone'] != null ? Colors.blue : null,
-                      decoration: order['userPhone'] != null ? TextDecoration.underline : null,
+                      color: order['telephone'] != null ? Colors.blue : null,
+                      decoration: order['telephone'] != null ? TextDecoration.underline : null,
                     ),
                   ),
                 ],
