@@ -352,7 +352,7 @@ class _FifthScreenState extends State<FifthScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.home_outlined),
               activeIcon: Icon(Icons.home),
-              label: 'Hommme',
+              label: 'Home',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.notifications_outlined),
